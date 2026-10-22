@@ -28,9 +28,7 @@ Para evitar incorporar ruido y garantizar la parsimonia del modelo, se aplicó u
 - Se ejecutó un **Bootstrap no paramétrico con 100 iteraciones**.
 
 - Se evaluaron dos criterios de puntuación estructural: 
-
 * **Criterio BIC**: Seleccionó una **base reducida de 5 predictoras** clave: `channel`, `is_weekend`, `kw_avg_avg_cat` (popularidad histórica de palabras clave), `num_hrefs_cat` y `n_tokens_content_cat`.
-
 * **Criterio AIC**: Resultó ser más permisivo y conservó las **14 predictoras candidatas (base completa)**.
 
 ------------------------------------------------------------------------
