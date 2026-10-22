@@ -1,8 +1,3 @@
----
-editor_options: 
-  markdown: 
-    wrap: sentence
----
 
 # Clasificación Predictiva Ordinal de la Popularidad de Noticias Digitales mediante Redes Bayesianas
 
@@ -22,15 +17,21 @@ Con este fin, se decidió emplear la oportunidad para predecir la popularidad de
 -   **Variable Objetivo Ordinal (`popularidad`)**: Se adaptó a las necesidades del ejercicio discretizándola mediante un criterio que permitiera interpretar lógicamente sus clases, tratando también de corregir su fuerte asimetría:
     1.  Se eliminaron temporalmente los *outliers* mediante el método del **Rango Intercuartílico (RIC)**.
     2.  Se normalizó la variable dividiendo por el valor máximo no atípico, escalando los artículos estándar en un rango $[0, 100]$ y dejando los *outliers* con puntuaciones $> 100$.
-    3.  Se crearon 4 niveles de popularidad ordinales: **`muy_baja`** ([0, 20)), **`baja`** ([20, 50)), **`media`** ([50, 90)) y **`alta`** ($\ge 90$).
+    3.  Se crearon 4 niveles de popularidad ordinales: **`muy_baja`** [0, 20), **`baja`** [20, 50), **`media`** [50, 90) y **`alta`** $\ge 90$.
 -   **Creación de Variable Síntesis (`channel`)**: Se condensaron 6 variables *dummy* independientes en una única variable categórica con 7 niveles (`business`, `entertainment`, `lifestyle`, `socmed`, `tech`, `world` y `other`) para simplificar la estructura bayesiana.
--   **Discretización por Cuantiles (Modificada)**: Las 12 predictoras continuas restantes se categorizaron en 3 niveles (`bajo`, `medio`, `alto`) fijando el rango intercuartílico $\left[Q_1 (25\%), Q_3 (75\%)\right]$ como la franja "normal/media" (50% de la distribución). Se aplicaron ajustes manuales específicos para variables con alta concentración de ceros (como `num_videos` o `is_weekend`).
+-   **Discretización por Cuantiles (Modificada)**: Las 12 predictoras continuas restantes se categorizaron en 3 niveles (`bajo`, `medio`, `alto`) fijando el rango intercuartílico $[Q_1 (25\%), Q_3 (75\%)]$ como la franja "normal/media" (50% de la distribución). Se aplicaron ajustes manuales específicos para variables con alta concentración de ceros (como `num_videos` o `is_weekend`).
 
 ### 2. Selección Automática de Variables (Markov Blanket + Bootstrap)
 
-Para evitar incorporar ruido y garantizar la parsimonia del modelo, se aplicó un algoritmo **Markov Blanket** sobre DAGs aprendidos por *Hill-Climbing* ($20$ inicios aleatorios y $5$ perturbaciones): - Se ejecutó un **Bootstrap no paramétrico con 100 iteraciones**.
-- Se evaluaron dos criterios de puntuación estructural: \* **Criterio BIC**: Seleccionó una **base reducida de 5 predictoras** clave: `channel`, `is_weekend`, `kw_avg_avg_cat` (popularidad histórica de palabras clave), `num_hrefs_cat` y `n_tokens_content_cat`.
-\* **Criterio AIC**: Resultó ser más permisivo y conservó las **14 predictoras candidatas (base completa)**.
+Para evitar incorporar ruido y garantizar la parsimonia del modelo, se aplicó un algoritmo **Markov Blanket** sobre DAGs aprendidos por *Hill-Climbing* ($20$ inicios aleatorios y $5$ perturbaciones): 
+
+- Se ejecutó un **Bootstrap no paramétrico con 100 iteraciones**.
+
+- Se evaluaron dos criterios de puntuación estructural: 
+
+* **Criterio BIC**: Seleccionó una **base reducida de 5 predictoras** clave: `channel`, `is_weekend`, `kw_avg_avg_cat` (popularidad histórica de palabras clave), `num_hrefs_cat` y `n_tokens_content_cat`.
+
+* **Criterio AIC**: Resultó ser más permisivo y conservó las **14 predictoras candidatas (base completa)**.
 
 ------------------------------------------------------------------------
 
@@ -60,7 +61,9 @@ Para validar qué modelo era óptimo en términos de AMAE, se aplicó una bater�
 Debido al gran volumen de comparaciones a realizar, se decidió establecer un orden lógico y argumentado que nos permitiera proceder más detenidamente: como las 12 propuestas provienen de 2 conjuntos de predictoras diferentes, primero se determinó la preferida para cada conjunto y posteriormente se enfrentaron estas dos para determinar la ganadora.
 
 1.  **Test Global de Friedman**: Confirmó la existencia de diferencias globales significativas entre los modelos ($p < 0.0001$ tanto en la base reducida como en la completa).
+
 2.  **Test de Normalidad de Shapiro-Wilk**: Evaluó la distribución de las diferencias apareadas dos a dos para determinar la elección de tests paramétricos o no paramétricos.
+
 3.  **Comparaciones Apareadas Unilaterales (**$t$-test / Wilcoxon) con **Corrección de Holm para Multiplicidad**:
     -   **En la base reducida**: **Naive Bayes con Ord-MAP** obtuvo un AMAE medio de $0.9445$, siendo **significativamente inferior** ($p < 0.001$) a todos los demás clasificadores.
     -   **En la base completa**: El modelo Naive Bayes Ord-MAP ($AMAE = 0.9474$) y el modelo TAN Ord-MAP ($AMAE = 0.9493$) no mostraron diferencias estadísticamente significativas entre sí ($p = 0.235$). Se seleccionó el modelo Naive Bayes Ord-MAP por parsimonia, pero se mantuvo el Tree-Augmented Naive Bayes como modelo secundario.
@@ -76,23 +79,30 @@ Una vez seleccionado el modelo principal (**Naive Bayes con Ord-MAP** sobre la b
 
 ### 1. Capacidad Discriminativa de las Variables
 
-Para evaluar qué variables aportaban mayor información al modelo, se cuantificó la diferencia máxima y mínima entre las probabilidades condicionadas de cada categoría frente a los niveles de popularidad: \* **`kw_avg_avg_cat` (Popularidad histórica de palabras clave)**: Fue la variable con **mayor capacidad discriminativa** ($0.204$).
-Los artículos con palabras clave de impacto alto multiplican notablemente su probabilidad de alcanzar categorías superiores.
-\* **`is_weekend` (Publicación en fin de semana)**: Mostró un fuerte poder discriminativo ($0.145$).
-Publicar en fin de semana reduce la probabilidad de popularidad `muy_baja` y desplaza la distribución hacia los niveles `media` y `alta`. \* **`num_hrefs_cat` y `channel`**: Presentaron capacidades intermedias ($\approx 0.106$).
-Destaca que canales como **`other`**, **`socmed`** y **`lifestyle`** concentran una mayor proporción de artículos altamente populares frente a temáticas como `world` o `entertainment`.
-\* **`n_tokens_content_cat` (Longitud)**: Fue la variable con **menor impacto** ($0.059$), mostrando una distribución muy homogénea (alrededor del 50% en longitud media) de forma transversal en todas las clases de popularidad.
+Para evaluar qué variables aportaban mayor información al modelo, se cuantificó la diferencia máxima y mínima entre las probabilidades condicionadas de cada categoría frente a los niveles de popularidad:
+
+* **`kw_avg_avg_cat` (Popularidad histórica de palabras clave)**: Fue la variable con **mayor capacidad discriminativa** ($0.204$). Los artículos con palabras clave de impacto alto multiplican notablemente su probabilidad de alcanzar categorías superiores.
+
+* **`is_weekend` (Publicación en fin de semana)**: Mostró un fuerte poder discriminativo ($0.145$). Publicar en fin de semana reduce la probabilidad de popularidad `muy_baja` y desplaza la distribución hacia los niveles `media` y `alta`.
+
+* **`num_hrefs_cat` y `channel`**: Presentaron capacidades intermedias ($\approx 0.106$). Destaca que canales como **`other`**, **`socmed`** y **`lifestyle`** concentran una mayor proporción de artículos altamente populares frente a temáticas como `world` o `entertainment`.
+
+* **`n_tokens_content_cat` (Longitud)**: Fue la variable con **menor impacto** ($0.059$), mostrando una distribución muy homogénea (alrededor del 50% en longitud media) de forma transversal en todas las clases de popularidad.
 
 ### 2. Estudio de Probabilidades Posteriores y Evaluación de Perfiles
 
-Mediante el uso de consultas de probabilidad condicionada $P(\text{popularidad} = y \mid X_j = x)$, se analizó cómo cambiaban las expectativas de difusión ante perfiles concretos: \* **Perfiles Favorables**: Combinar canales de alta difusión (`socmed`), publicación en fin de semana, muchos enlaces y palabras clave de alta popularidad desplaza la probabilidad posterior hacia las clases `media` y `alta`. \* **Perfiles Desfavorables**: Artículos en canales como `world`, publicados entre semana y con bajo historial de palabras clave acumulan una probabilidad dominante en la categoría `muy_baja` ($\approx 58\%$).
-\* **Análisis de Casos Nuevos (Combinaciones No Vistas)**: Se probaron 15 combinaciones teóricas que no aparecían en el entrenamiento (3.97% del total posible).
-Aunque el modelo tiende a predecir mayoritariamente la clase `baja` en estos escenarios inéditos, esto no es un fallo, sino una consecuencia lógica: debido al fuerte desbalance del dataset original y al suavizado aplicado, ante una combinación que no conoce, el modelo adopta una postura conservadora.
-Aun así, ofrece respuestas estables y coherentes.
+Mediante el uso de consultas de probabilidad condicionada $P(\text{popularidad} = y \mid X_j = x)$, se analizó cómo cambiaban las expectativas de difusión ante perfiles concretos: 
+
+* **Perfiles Favorables**: Combinar canales de alta difusión (`socmed`), publicación en fin de semana, muchos enlaces y palabras clave de alta popularidad desplaza la probabilidad posterior hacia las clases `media` y `alta`.
+
+* **Perfiles Desfavorables**: Artículos en canales como `world`, publicados entre semana y con bajo historial de palabras clave acumulan una probabilidad dominante en la categoría `muy_baja` ($\approx 58\%$).
+
+* **Análisis de Casos Nuevos (Combinaciones No Vistas)**: Se probaron 15 combinaciones teóricas que no aparecían en el entrenamiento (3.97% del total posible). Aunque el modelo tiende a predecir mayoritariamente la clase `baja` en estos escenarios inéditos, esto no es un fallo, sino una consecuencia lógica: debido al fuerte desbalance del dataset original y al suavizado aplicado, ante una combinación que no conoce, el modelo adopta una postura conservadora. Aun así, ofrece respuestas estables y coherentes.
 
 ### 3. Contextualización del Rendimiento Predictivo
 
 -   **Métrica AMAE (**$0.9445$): Al tratarse de un problema con 4 clases ordinales, un AMAE inferior a $1.0$ indica que, en promedio, **el error del modelo es menor a una categoría de distancia**.
+
 -   **Sesgo hacia la Clase Mayoritaria**: La matriz de confusión reveló una clara tendencia a sobreestimar la clase `baja` (la más frecuente), un comportamiento esperable dado el desbalance natural del dataset y la complejidad inherente a la predicción de comportamientos e interacciones sociales (fenómenos sociológicos donde la variabilidad es extrema y difícil de capturar en su totalidad mediante variables puramente editoriales).
 
 ------------------------------------------------------------------------
@@ -100,15 +110,17 @@ Aun así, ofrece respuestas estables y coherentes.
 ## Análisis Secundarios
 
 -   **Estructura TAN Secundaria**: Reveló dependencias clave entre predictoras: `channel` actúa como nodo padre directo de `is_weekend` y `kw_avg_avg_cat`; mientras que las variables de **subjetividad y polaridad** forman un clúster interdependiente aislado del resto.
+
 -   **Análisis Bivariante Complementario**: Contrastes de Chi-cuadrado y $V$ de Cramer ($V \approx 0.16$ para palabras clave y canal) confirmaron la dependencia estadística significativa de todas las predictoras seleccionadas con la respuesta ($p < 0.0001$).
 
 ------------------------------------------------------------------------
 
 ## Limitaciones y Propuestas de Mejora
 
-Como cierre del proyecto, se identificaron algunas áreas de mejora técnica y metodológica de cara a futuros trabajos: - **Optimización del Código**: El flujo de trabajo presentó duplicación de código entre modelos y sobreescritura de objetos intermedios para simplificar la ejecución.
-En el futuro, se vectorizaría y estructuraría mediante funciones auxiliares y reutilizables.
-- **Criterio de Selección Markov Blanket**: El uso del criterio AIC resultó muy permisivo (conservando las 14 variables).
-Como mejora, se propone establecer un umbral basado en un porcentaje estricto de apariciones en el *Bootstrap* en lugar de una única aparición.
-- **Alternativas No Paramétricas o Lineales**: Dado que la base de datos original era mayoritariamente numérica, el proceso de discretización supuso una pérdida de información.
-Sería interesante contrastar estos resultados con modelos lineales generalizados u otras técnicas de datos continuos.
+Como cierre del proyecto, se identificaron algunas áreas de mejora técnica y metodológica de cara a futuros trabajos: 
+
+- **Optimización del Código**: El flujo de trabajo presentó duplicación de código entre modelos y sobreescritura de objetos intermedios para simplificar la ejecución. En el futuro, se vectorizaría y estructuraría mediante funciones auxiliares y reutilizables.
+
+- **Criterio de Selección Markov Blanket**: El uso del criterio AIC resultó muy permisivo (conservando las 14 variables). Como mejora, se propone establecer un umbral basado en un porcentaje estricto de apariciones en el *Bootstrap* en lugar de una única aparición.
+
+- **Alternativas No Paramétricas o Lineales**: Dado que la base de datos original era mayoritariamente numérica, el proceso de discretización supuso una pérdida de información. Sería interesante contrastar estos resultados con modelos lineales generalizados u otras técnicas de datos continuos.
