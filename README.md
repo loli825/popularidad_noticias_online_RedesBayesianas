@@ -19,7 +19,7 @@ Con este fin, se decidió emplear la oportunidad para predecir la popularidad de
     2.  Se normalizó la variable dividiendo por el valor máximo no atípico, escalando los artículos estándar en un rango $[0, 100]$ y dejando los *outliers* con puntuaciones $> 100$.
     3.  Se crearon 4 niveles de popularidad ordinales: **`muy_baja`** [0, 20), **`baja`** [20, 50), **`media`** [50, 90) y **`alta`** $\ge 90$.
 -   **Creación de Variable Síntesis (`channel`)**: Se condensaron 6 variables *dummy* independientes en una única variable categórica con 7 niveles (`business`, `entertainment`, `lifestyle`, `socmed`, `tech`, `world` y `other`) para simplificar la estructura bayesiana.
--   **Discretización por Cuantiles (Modificada)**: Las 12 predictoras continuas restantes se categorizaron en 3 niveles (`bajo`, `medio`, `alto`) fijando el rango intercuartílico $[Q_1 (25\%), Q_3 (75\%)]$ como la franja "normal/media" (50% de la distribución). Se aplicaron ajustes manuales específicos para variables con alta concentración de ceros (como `num_videos` o `is_weekend`).
+-   **Discretización por Cuantiles (Modificada)**: Las 12 predictoras continuas restantes se categorizaron en 3 niveles (`bajo`, `medio`, `alto`) fijando el rango intercuartílico `[Q₁ (25%), Q₃ (75%)]` como la franja "normal/media" (50% de la distribución). Se aplicaron ajustes manuales específicos para variables con alta concentración de ceros (como `num_videos` o `is_weekend`).
 
 ### 2. Selección Automática de Variables (Markov Blanket + Bootstrap)
 
